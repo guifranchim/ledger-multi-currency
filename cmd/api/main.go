@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"ledger-multi-currency/internal/handler"
 	"ledger-multi-currency/internal/repository"
 	"ledger-multi-currency/internal/routes"
@@ -10,22 +9,26 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
+	accountRepo := repository.NewAccountRepository()
+	journalRepo := repository.NewJournalRepository()
+	fxrateRepo := repository.NewFXRateRepository()
 
-	var db *sql.DB
+	accountService := service.NewAccountService(accountRepo, journalRepo)
+	journalService := service.NewJournalService(journalRepo, accountRepo)
+	fxrateService := service.NewFXRateService(fxrateRepo)
 
-	accountsRepo := repository.NewAccountsRepository(db)
-	accountsService := service.NewAccountsService(accountsRepo)
-
-	accountsHandler := handler.NewAccountsHandler(accountsService)
+	accountHandler := handler.NewAccountHandler(accountService)
+	journalHandler := handler.NewJournalHandler(journalService)
+	fxrateHandler := handler.NewFXRateHandler(fxrateService)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	routes.SetupRoutes(r, accountsHandler)
+	routes.Setup(r, accountHandler, journalHandler, fxrateHandler)
 
-	slog.Info("Server started on :3000")
-	http.ListenAndServe(":3000", r)
+	slog.Info("Starting Ledger API on :3000...")
+	if err := http.ListenAndServe(":3000", r); err != nil {
+		slog.Error("Server error", "err", err)
+	}
 }
