@@ -74,7 +74,7 @@ func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type GetBalanceResponse struct {
-	Balances map[string]float64 `json:"balances"`
+	Balances map[string]int64 `json:"balances"`
 }
 
 func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -88,10 +88,7 @@ func (h *AccountHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := GetBalanceResponse{
-		Balances: make(map[string]float64),
-	}
-	for currency, minor := range balances {
-		response.Balances[currency] = float64(minor) / 100.0
+		Balances: balances,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

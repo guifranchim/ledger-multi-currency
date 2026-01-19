@@ -73,11 +73,11 @@ func (h *JournalHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type AddPostingRequest struct {
-	PostingID string  `json:"postingId"`
-	AccountID string  `json:"accountId"`
-	Currency  string  `json:"currency"`
-	Amount    float64 `json:"amount"`
-	Debit     bool    `json:"debit"`
+	PostingID string `json:"postingId"`
+	AccountID string `json:"accountId"`
+	Currency  string `json:"currency"`
+	Amount    int64  `json:"amount"`
+	Debit     bool   `json:"debit"`
 }
 
 func (h *JournalHandler) AddPosting(w http.ResponseWriter, r *http.Request) {
@@ -89,14 +89,12 @@ func (h *JournalHandler) AddPosting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	amountMinor := int64(req.Amount * 100)
-
 	err := h.service.AddPosting(
 		entryID,
 		req.PostingID,
 		req.AccountID,
 		req.Currency,
-		amountMinor,
+		req.Amount,
 		req.Debit,
 	)
 	if err != nil {

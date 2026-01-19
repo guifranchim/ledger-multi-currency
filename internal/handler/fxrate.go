@@ -17,10 +17,11 @@ func NewFXRateHandler(service *service.FXRateService) *FXRateHandler {
 }
 
 type RegisterRateRequest struct {
-	ID           string  `json:"id"`
-	FromCurrency string  `json:"fromCurrency"`
-	ToCurrency   string  `json:"toCurrency"`
-	Rate         float64 `json:"rate"`
+	ID           string `json:"id"`
+	FromCurrency string `json:"fromCurrency"`
+	ToCurrency   string `json:"toCurrency"`
+	RateScaled   int64  `json:"rateScaled"`
+	Scale        int    `json:"scale"`
 }
 
 func (h *FXRateHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -30,15 +31,12 @@ func (h *FXRateHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rateScaled := int64(req.Rate * 1000000)
-	scale := 1000000
-
 	rate, err := h.service.RegisterRate(
 		req.ID,
 		req.FromCurrency,
 		req.ToCurrency,
-		rateScaled,
-		scale,
+		req.RateScaled,
+		req.Scale,
 	)
 	if err != nil {
 		slog.Error("erro ao registrar taxa", "err", err)
@@ -67,17 +65,20 @@ func (h *FXRateHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type ConvertRequest struct {
-	From   string  `json:"from"`
-	To     string  `json:"to"`
-	Amount float64 `json:"amount"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Amount int64  `json:"amount"`
 }
 
 type ConvertResponse struct {
-	From      string  `json:"from"`
-	To        string  `json:"to"`
-	Original  float64 `json:"original"`
-	Converted float64 `json:"converted"`
-	Rate      float64 `json:"rate"`
+	From      string `json:"from"`
+	To        string `json:"to"`
+	Original  int64  `json:"original"`
+	Converted int64  `json:"converted"`
+	Rate      struct {
+		Numerator   int64 `json:"numerator"`
+		Denominator int64 `json:"denominator"`
+	} `json:"rate"`
 }
 
 func (h *FXRateHandler) Convert(w http.ResponseWriter, r *http.Request) {
@@ -87,9 +88,7 @@ func (h *FXRateHandler) Convert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	amountMinor := int64(req.Amount * 100)
-
-	converted, err := h.service.Convert(req.From, req.To, amountMinor)
+	converted, err := h.service.Convert(req.From, req.To, req.Amount)
 	if err != nil {
 		slog.Error("erro ao converter", "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -97,17 +96,16 @@ func (h *FXRateHandler) Convert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rate, _ := h.service.GetLatestRate(req.From, req.To)
-	rateValue := 0.0
-	if rate != nil {
-		rateValue = rate.GetRate()
-	}
 
 	response := ConvertResponse{
 		From:      req.From,
 		To:        req.To,
 		Original:  req.Amount,
-		Converted: float64(converted) / 100.0,
-		Rate:      rateValue,
+		Converted: converted,
+	}
+	if rate != nil {
+		response.Rate.Numerator = rate.RateScaled
+		response.Rate.Denominator = int64(rate.Scale)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

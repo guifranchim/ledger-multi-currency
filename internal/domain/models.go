@@ -119,10 +119,6 @@ func (p *Posting) GetAmountSigned() int64 {
 	return -p.AmountMinor
 }
 
-func (p *Posting) GetAmountDecimal() float64 {
-	return float64(p.AmountMinor) / 100.0
-}
-
 type FXRate struct {
 	ID           string
 	FromCurrency string
@@ -151,10 +147,6 @@ func NewFXRate(id, from, to string, rateScaled int64, scale int) (*FXRate, error
 		Scale:        scale,
 		CreatedAt:    time.Now(),
 	}, nil
-}
-
-func (f *FXRate) GetRate() float64 {
-	return float64(f.RateScaled) / float64(f.Scale)
 }
 
 func (f *FXRate) Convert(amountMinor int64) int64 {
